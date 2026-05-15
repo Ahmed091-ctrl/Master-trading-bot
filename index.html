@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Alkali Pro | Bi-Directional Intelligence</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@500;800&display=swap');
+        body { background-color: #050505; color: #eee; font-family: 'JetBrains Mono', monospace; }
+        .terminal-box { background: #0c0c0c; border: 1px solid #222; border-radius: 20px; box-shadow: 0 10px 40px rgba(0,0,0,0.8); }
+        .glow-gold { text-shadow: 0 0 10px rgba(251, 191, 36, 0.4); }
+        .long-glow { box-shadow: 0 0 20px rgba(34, 197, 94, 0.2); border-color: #22c55e; }
+        .short-glow { box-shadow: 0 0 20px rgba(239, 68, 68, 0.2); border-color: #ef4444; }
+    </style>
+</head>
+<body class="p-4 flex flex-col items-center min-h-screen pb-20">
+
+    <header class="w-full max-w-md py-8 flex justify-between items-center px-2">
+        <h1 class="text-2xl font-extrabold glow-gold italic">ALKALI<span class="text-white">INTEL</span></h1>
+        <div id="status" class="text-[8px] bg-white/5 px-2 py-1 rounded text-gray-500 uppercase font-bold tracking-widest">Awaiting Analysis</div>
+    </header>
+
+    <div class="w-full max-w-md terminal-box p-6 mb-4">
+        <input type="text" id="target" placeholder="Symbol or Address..." class="w-full bg-black border border-[#222] p-4 rounded-xl text-xs outline-none focus:border-yellow-500 font-bold text-yellow-500 mb-3">
+        <button onclick="deepScan()" class="w-full bg-yellow-500 text-black font-black py-4 rounded-xl text-[10px] uppercase tracking-widest active:scale-95 transition-all">Deep Scan Market</button>
+    </div>
+
+    <div id="results" class="hidden w-full max-w-md space-y-4">
+        
+        <div id="directionCard" class="terminal-box p-6 text-center border-t-4">
+            <p class="text-[8px] text-gray-500 uppercase mb-1">Algorithmic Bias</p>
+            <h2 id="bias" class="text-4xl font-black italic tracking-tighter">---</h2>
+            <p id="logicDesc" class="text-[9px] text-gray-400 mt-2 uppercase tracking-widest leading-loose"></p>
+        </div>
+
+        <div class="terminal-box p-6 space-y-5">
+            <div class="flex justify-between items-center border-b border-white/5 pb-4">
+                <div>
+                    <p id="coinLabel" class="text-[9px] text-gray-500 font-bold">---</p>
+                    <p id="curPrice" class="text-xl font-black text-white">---</p>
+                </div>
+                <div class="text-right">
+                    <p class="text-[8px] text-gray-500 uppercase">Risk Level</p>
+                    <p id="riskScore" class="text-xs font-bold">---</p>
+                </div>
+            </div>
+
+            <div class="space-y-4">
+                <div class="flex justify-between">
+                    <span class="text-[9px] text-gray-500 uppercase">Optimal Entry</span>
+                    <span id="entry" class="text-xs font-bold text-blue-400">---</span>
+                </div>
+                <div class="flex justify-between">
+                    <span class="text-[9px] text-gray-500 uppercase">Take Profit (Pro)</span>
+                    <span id="tp" class="text-xs font-bold text-green-500">---</span>
+                </div>
+                <div class="flex justify-between">
+                    <span class="text-[9px] text-gray-500 uppercase">Hard Stop Loss</span>
+                    <span id="sl" class="text-xs font-bold text-red-500">---</span>
+                </div>
+            </div>
+        </div>
+
+        <a href="https://www.bybit.com/invite?ref=Z8VPGGR" target="_blank" class="block w-full text-center py-4 glass border border-white/5 rounded-xl text-[9px] font-bold text-gray-500 tracking-[0.3em] uppercase">Open Trade on Bybit Hub</a>
+    </div>
+
+    <script>
+        async function deepScan() {
+            const query = document.getElementById('target').value.trim();
+            if(!query) return;
+            const resArea = document.getElementById('results');
+            resArea.classList.remove('hidden');
+
+            try {
+                // Fetch All Pairs from DexScreener
+                const res = await fetch(`https://api.dexscreener.com/latest/dex/search?q=${query}`);
+                const data = await res.json();
+                const pair = data.pairs.sort((a,b) => (b.liquidity?.usd||0) - (a.liquidity?.usd||0))[0];
+
+                const price = parseFloat(pair.priceUsd);
+                const h24 = parseFloat(pair.priceChange.h24);
+                const liq = pair.liquidity?.usd || 0;
+                
+                // 1. UPDATE BASICS
+                document.getElementById('coinLabel').innerText = pair.baseToken.symbol + " (" + pair.chainId.toUpperCase() + ")";
+                document.getElementById('curPrice').innerText = "$" + (price < 0.0001 ? price.toFixed(10) : price.toLocaleString());
+                document.getElementById('status').innerText = "Scan Complete";
+                document.getElementById('status').classList.replace('text-gray-500', 'text-green-500');
+
+                // 2. BI-DIRECTIONAL LOGIC (The "Thinking")
+                const card = document.getElementById('directionCard');
+                const bias = document.getElementById('bias');
+                const desc = document.getElementById('logicDesc');
+                
+                let mode = "LONG";
+                let tpPercent = 2.0; // 200% Profit (3x)
+                let slPercent = 0.45; // 45% Stop Loss
+
+                // If coin is pumped too hard (+20% in 24h), it's Overbought -> Suggest SHORT
+                if (h24 > 20) {
+                    mode = "SHORT";
+                    bias.innerText = "SHORT / SELL";
+                    bias.className = "text-4xl font-black italic tracking-tighter text-red-500 animate-pulse";
+                    card.className = "terminal-box p-6 text-center short-glow border-t-4 border-red-500";
+                    desc.innerText = "Overbought Condition detected. Price is far above 24h average. Expect Reversal.";
+                } else {
+                    mode = "LONG";
+                    bias.innerText = "LONG / BUY";
+                    bias.className = "text-4xl font-black italic tracking-tighter text-green-500 animate-pulse";
+                    card.className = "terminal-box p-6 text-center long-glow border-t-4 border-green-500";
+                    desc.innerText = "Bullish momentum detected or price at floor. Targetting Moonshot targets.";
+                }
+
+                // 3. TARGET CALCULATION
+                const fmt = (p) => p < 0.0001 ? p.toFixed(10) : p.toLocaleString();
+                
+                if (mode === "LONG") {
+                    document.getElementById('entry').innerText = "$" + fmt(price);
+                    document.getElementById('tp').innerText = "$" + fmt(price * 3); // +200%
+                    document.getElementById('sl').innerText = "$" + fmt(price * 0.55); // -45%
+                } else {
+                    document.getElementById('entry').innerText = "$" + fmt(price);
+                    document.getElementById('tp').innerText = "$" + fmt(price * 0.33); // 66% drop target
+                    document.getElementById('sl').innerText = "$" + fmt(price * 1.45); // +45% pump stop
+                }
+
+                // 4. RISK SCORE
+                const risk = liq < 20000 ? "EXTREME" : liq < 100000 ? "HIGH" : "MODERATE";
+                document.getElementById('riskScore').innerText = risk;
+                document.getElementById('riskScore').className = "text-xs font-bold " + (risk === "EXTREME" ? "text-red-500" : "text-yellow-500");
+
+            } catch (err) {
+                alert("Deep Scan Error. Use Contract Address for best results.");
+            }
+        }
+    </script>
+</body>
+</html>
